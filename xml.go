@@ -27,15 +27,8 @@ func XML(s string) (*Document, error) {
 	var stack []*Node
 	cur := &doc.Node
 
-	push := func(n *Node) {
-		cur.appendChildRaw(n)
-		n.doc = doc
-		stack = append(stack, cur)
-		cur = n
-	}
-	_ = push
-
 	for {
+		startOff := dec.InputOffset()
 		tok, err := dec.RawToken()
 		if err == io.EOF {
 			break
@@ -57,7 +50,13 @@ func XML(s string) (*Document, error) {
 			cur = stack[len(stack)-1]
 			stack = stack[:len(stack)-1]
 		case xml.CharData:
-			cur.appendChildRaw(&Node{Type: TextNode, content: string(t), doc: doc})
+			// encoding/xml collapses CDATA into CharData, so recover the CDATA node
+			// type by inspecting the source span this token was decoded from.
+			nt := TextNode
+			if isCDATASpan(s, int(startOff), int(dec.InputOffset())) {
+				nt = CDATANode
+			}
+			cur.appendChildRaw(&Node{Type: nt, content: string(t), doc: doc})
 		case xml.Comment:
 			cur.appendChildRaw(&Node{Type: CommentNode, content: string(t), doc: doc})
 		case xml.ProcInst:
@@ -76,21 +75,20 @@ func XML(s string) (*Document, error) {
 	return doc, nil
 }
 
-// newXMLElement builds an element node from a RawToken StartElement, splitting
-// qualified names into prefix + local and separating xmlns declarations from
-// ordinary attributes.
+// newXMLElement builds an element node from a RawToken StartElement. In RawToken
+// mode encoding/xml already splits a "prefix:local" name into Name.Space (the raw
+// prefix) and Name.Local, so we take the prefix from there; xmlns declarations are
+// separated from ordinary attributes.
 func newXMLElement(t xml.StartElement) *Node {
-	prefix, local := splitQName(t.Name.Local)
-	el := &Node{Type: ElementNode, Name: local, Prefix: prefix}
+	el := &Node{Type: ElementNode, Name: t.Name.Local, Prefix: t.Name.Space}
 	for _, a := range t.Attr {
-		aPrefix, aLocal := splitQName(a.Name.Local)
 		switch {
-		case a.Name.Local == "xmlns":
+		case a.Name.Space == "" && a.Name.Local == "xmlns":
 			el.nsDecls = append(el.nsDecls, &Namespace{Prefix: "", URI: a.Value})
-		case aPrefix == "xmlns":
-			el.nsDecls = append(el.nsDecls, &Namespace{Prefix: aLocal, URI: a.Value})
+		case a.Name.Space == "xmlns":
+			el.nsDecls = append(el.nsDecls, &Namespace{Prefix: a.Name.Local, URI: a.Value})
 		default:
-			el.Attrs = append(el.Attrs, &Attr{Name: aLocal, Prefix: aPrefix, Value: a.Value})
+			el.Attrs = append(el.Attrs, &Attr{Name: a.Name.Local, Prefix: a.Name.Space, Value: a.Value})
 		}
 	}
 	return el
@@ -127,6 +125,20 @@ func resolveNamespaces(n *Node, scope nsScope) {
 	for c := n.firstChild; c != nil; c = c.next {
 		resolveNamespaces(c, scope)
 	}
+}
+
+// isCDATASpan reports whether the source bytes for a CharData token (from lo to
+// hi) begin with a CDATA section marker, allowing us to distinguish CDATA from
+// ordinary text after encoding/xml has collapsed the two.
+func isCDATASpan(src string, lo, hi int) bool {
+	if lo < 0 || hi > len(src) || lo >= hi {
+		return false
+	}
+	seg := src[lo:hi]
+	for len(seg) > 0 && (seg[0] == ' ' || seg[0] == '\t' || seg[0] == '\n' || seg[0] == '\r') {
+		seg = seg[1:]
+	}
+	return strings.HasPrefix(seg, "<![CDATA[")
 }
 
 // directiveName extracts the leading token of an XML directive, e.g. "DOCTYPE".

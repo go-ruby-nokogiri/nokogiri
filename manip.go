@@ -119,7 +119,12 @@ func (n *Node) Replace(repl *Node) *Node {
 	} else if n.parent != nil {
 		n.parent.lastChild = repl
 	}
-	n.unlink()
+	// Detach n directly (do NOT call unlink here: n's sibling links have already
+	// been repurposed to point at repl, so re-running the sibling rewiring would
+	// clobber repl's placement).
+	n.parent = nil
+	n.prev = nil
+	n.next = nil
 	return repl
 }
 
