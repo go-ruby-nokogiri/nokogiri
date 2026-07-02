@@ -96,11 +96,7 @@ func compileSequence(toks []cssToken) (string, error) {
 		case cssClass:
 			preds = append(preds, fmt.Sprintf("contains(concat(' ', normalize-space(@class), ' '), %s)", xpStr(" "+t.val+" ")))
 		case cssAttr:
-			p, err := compileAttr(t.val)
-			if err != nil {
-				return "", err
-			}
-			preds = append(preds, p)
+			preds = append(preds, compileAttr(t.val))
 		case cssPseudo:
 			p, err := compilePseudo(t.val)
 			if err != nil {
@@ -118,8 +114,10 @@ func compileSequence(toks []cssToken) (string, error) {
 	return s, nil
 }
 
-// compileAttr compiles an [attr...] qualifier body (without the brackets).
-func compileAttr(body string) (string, error) {
+// compileAttr compiles an [attr...] qualifier body (without the brackets) into
+// an XPath predicate. Every attribute form maps to a valid predicate, so this
+// never fails.
+func compileAttr(body string) string {
 	body = strings.TrimSpace(body)
 	for _, op := range []string{"~=", "|=", "^=", "$=", "*=", "="} {
 		if idx := strings.Index(body, op); idx >= 0 {
@@ -128,22 +126,22 @@ func compileAttr(body string) (string, error) {
 			at := "@" + name
 			switch op {
 			case "=":
-				return fmt.Sprintf("%s=%s", at, xpStr(val)), nil
+				return fmt.Sprintf("%s=%s", at, xpStr(val))
 			case "~=":
-				return fmt.Sprintf("contains(concat(' ', normalize-space(%s), ' '), %s)", at, xpStr(" "+val+" ")), nil
+				return fmt.Sprintf("contains(concat(' ', normalize-space(%s), ' '), %s)", at, xpStr(" "+val+" "))
 			case "^=":
-				return fmt.Sprintf("starts-with(%s, %s)", at, xpStr(val)), nil
+				return fmt.Sprintf("starts-with(%s, %s)", at, xpStr(val))
 			case "$=":
-				return fmt.Sprintf("substring(%s, string-length(%s) - %d) = %s", at, at, len(val)-1, xpStr(val)), nil
+				return fmt.Sprintf("substring(%s, string-length(%s) - %d) = %s", at, at, len(val)-1, xpStr(val))
 			case "*=":
-				return fmt.Sprintf("contains(%s, %s)", at, xpStr(val)), nil
+				return fmt.Sprintf("contains(%s, %s)", at, xpStr(val))
 			case "|=":
-				return fmt.Sprintf("(%s=%s or starts-with(%s, %s))", at, xpStr(val), at, xpStr(val+"-")), nil
+				return fmt.Sprintf("(%s=%s or starts-with(%s, %s))", at, xpStr(val), at, xpStr(val+"-"))
 			}
 		}
 	}
 	// bare [attr] presence test
-	return "@" + strings.TrimSpace(body), nil
+	return "@" + strings.TrimSpace(body)
 }
 
 // compilePseudo compiles a :pseudo-class selector.
@@ -209,11 +207,7 @@ func compileNotArg(arg string) (string, error) {
 		case cssClass:
 			preds = append(preds, fmt.Sprintf("contains(concat(' ', normalize-space(@class), ' '), %s)", xpStr(" "+t.val+" ")))
 		case cssAttr:
-			p, err := compileAttr(t.val)
-			if err != nil {
-				return "", err
-			}
-			preds = append(preds, p)
+			preds = append(preds, compileAttr(t.val))
 		case cssPseudo:
 			p, err := compilePseudo(t.val)
 			if err != nil {
