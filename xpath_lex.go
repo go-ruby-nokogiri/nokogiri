@@ -148,8 +148,10 @@ func (l *xpathLexer) lexName() {
 		l.pos += 2
 		l.toks = append(l.toks, token{tAxis, name})
 		return
-	case strings.HasPrefix(rest, "(") && isFunctionName(name):
-		// leave "(" for the op lexer; classify name as function
+	case strings.HasPrefix(rest, "("):
+		// A name immediately followed by "(" is a function call (or a node-type
+		// test such as node()/text(), which the parser disambiguates by context).
+		// Leave the "(" for the op lexer.
 		l.pos = save
 		l.toks = append(l.toks, token{tFunc, name})
 		return
@@ -163,11 +165,6 @@ func (l *xpathLexer) lexName() {
 	}
 	l.toks = append(l.toks, token{tName, name})
 }
-
-// isFunctionName rejects the node-test keywords that look like calls but are node
-// tests (node(), text(), comment(), processing-instruction()); those are still
-// lexed as functions here and disambiguated by the parser via context.
-func isFunctionName(string) bool { return true }
 
 // opExpected reports whether the previous significant token means the next name
 // keyword is an operator (per the XPath lexer disambiguation rules).

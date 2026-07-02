@@ -157,16 +157,6 @@ func readIdent(sel string, i int) (string, int) {
 	return sel[start:i], i
 }
 
-// mustTokens tokenizes a sub-selector (used inside :not(...)); a lex error yields
-// an empty slice which compileSequence turns into a universal match.
-func mustTokens(sel string) []cssToken {
-	toks, err := tokenizeCSS(sel)
-	if err != nil {
-		return nil
-	}
-	return toks
-}
-
 // unquoteCSS strips surrounding single or double quotes from an attribute value.
 func unquoteCSS(s string) string {
 	if len(s) >= 2 && (s[0] == '"' || s[0] == '\'') && s[len(s)-1] == s[0] {
