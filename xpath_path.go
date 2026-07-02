@@ -252,10 +252,16 @@ func (ctx *evalContext) applyPredicates(s step, nodes []*Node) []*Node {
 		var kept []*Node
 		size := len(nodes)
 		for i, n := range nodes {
-			// Within a predicate, current() resolves to the node being filtered.
-			// This lets the CSS-to-XPath compiler express :first-of-type et al. via
-			// name()=name(current()) against the candidate element.
-			sub := &evalContext{node: n, current: n, pos: i + 1, size: size, vars: ctx.vars, ns: ctx.ns, docid: ctx.docid}
+			// current() resolves to the node matched by the *outermost* location
+			// step, so it changes only at the top-level predicate; a predicate
+			// nested inside another (e.g. the [name()=name(current())] the CSS
+			// :nth-of-type compiler emits) keeps the outer candidate. We detect the
+			// outermost predicate by current still pointing at the eval root.
+			cur := ctx.current
+			if ctx.current == ctx.root {
+				cur = n
+			}
+			sub := &evalContext{node: n, current: cur, root: ctx.root, pos: i + 1, size: size, vars: ctx.vars, ns: ctx.ns, docid: ctx.docid}
 			v := eval(pred, sub)
 			if num, ok := v.(float64); ok {
 				if int(num) == i+1 {

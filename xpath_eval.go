@@ -23,6 +23,7 @@ type nodeList struct{ nodes []*Node }
 type evalContext struct {
 	node    *Node
 	current *Node // the current() node: the context of the outermost expression
+	root    *Node // the node the whole expression is evaluated against
 	pos     int   // 1-based
 	size    int
 	vars    map[string]xpValue
@@ -50,7 +51,7 @@ func evalXPath(expr string, ctxNode *Node, vars map[string]xpValue, ns map[strin
 			panic(r)
 		}
 	}()
-	ctx := &evalContext{node: ctxNode, current: ctxNode, pos: 1, size: 1, vars: vars, ns: ns, docid: map[*Node]int{}}
+	ctx := &evalContext{node: ctxNode, current: ctxNode, root: ctxNode, pos: 1, size: 1, vars: vars, ns: ns, docid: map[*Node]int{}}
 	ctx.indexDoc(ctxNode)
 	return eval(ast, ctx), nil
 }
