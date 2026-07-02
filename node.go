@@ -210,11 +210,21 @@ func (n *Node) NodeName() string {
 // matching Nokogiri#text / #content / #inner_text.
 func (n *Node) Text() string {
 	var b strings.Builder
+	// Leaf nodes whose value is their own character data (text/cdata, and the
+	// attribute/comment/PI leaves for which #text simply returns the content)
+	// yield that content directly; an element yields the text of its descendants
+	// (comments and PIs do not contribute, matching libxml2/XPath string-value).
+	switch n.Type {
+	case AttributeNode, CommentNode, ProcessingInstructionNode:
+		return n.content
+	}
 	var walk func(*Node)
 	walk = func(x *Node) {
 		switch x.Type {
-		case TextNode, CDATANode, AttributeNode, CommentNode, ProcessingInstructionNode:
+		case TextNode, CDATANode:
 			b.WriteString(x.content)
+		case CommentNode, ProcessingInstructionNode:
+			// skip: not part of an element's text
 		default:
 			for c := x.firstChild; c != nil; c = c.next {
 				walk(c)
