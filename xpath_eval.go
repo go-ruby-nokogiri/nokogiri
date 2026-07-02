@@ -5,7 +5,6 @@
 package nokogiri
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"strconv"
@@ -97,10 +96,11 @@ func eval(e expr, ctx *evalContext) xpValue {
 		return callFunc(ex, ctx)
 	case *binaryExpr:
 		return evalBinary(ex, ctx)
-	case *pathExpr:
-		return evalPath(ex, ctx)
+	default:
+		// The parser only ever produces the expr kinds above; *pathExpr is the
+		// remaining one.
+		return evalPath(e.(*pathExpr), ctx)
 	}
-	panic(evalError(fmt.Sprintf("xpath: cannot evaluate %T", e)))
 }
 
 func evalBinary(ex *binaryExpr, ctx *evalContext) xpValue {
@@ -126,10 +126,10 @@ func evalBinary(ex *binaryExpr, ctx *evalContext) xpValue {
 		return toNumber(eval(ex.l, ctx)) * toNumber(eval(ex.r, ctx))
 	case "div":
 		return toNumber(eval(ex.l, ctx)) / toNumber(eval(ex.r, ctx))
-	case "mod":
+	default:
+		// The only remaining operator the parser emits is "mod".
 		return math.Mod(toNumber(eval(ex.l, ctx)), toNumber(eval(ex.r, ctx)))
 	}
-	panic(evalError("xpath: unknown operator " + ex.op))
 }
 
 // sortUnique returns a nodeList sorted in document order with duplicates removed.
