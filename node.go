@@ -213,7 +213,7 @@ func (n *Node) Text() string {
 	var walk func(*Node)
 	walk = func(x *Node) {
 		switch x.Type {
-		case TextNode, CDATANode:
+		case TextNode, CDATANode, AttributeNode, CommentNode, ProcessingInstructionNode:
 			b.WriteString(x.content)
 		default:
 			for c := x.firstChild; c != nil; c = c.next {
