@@ -78,7 +78,11 @@ The following are **not** implemented in v1 and are called out so nothing is a
 silent gap. They are the parts of Nokogiri that go well beyond parse + query +
 serialize, or that depend on libxslt/libxml2 subsystems:
 
-- **XSLT** (`Nokogiri::XSLT`) — no stylesheet transforms.
+- **XSLT** (`Nokogiri::XSLT`) — not built in here; a pure-Go XSLT 1.0 processor
+  lives in the sibling module
+  [go-ruby-xslt/xslt](https://github.com/go-ruby-xslt/xslt), which drives this
+  library's XPath engine through the `XPathContext` extension seam
+  (`Node.EvalXPathCtx`).
 - **Schema validation** — no DTD / RelaxNG / XSD validation.
 - **Streaming** — no SAX (`Nokogiri::XML::SAX`) or pull `Reader` API; parsing is
   DOM-only.
