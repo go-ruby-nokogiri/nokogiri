@@ -29,6 +29,12 @@ type evalContext struct {
 	vars    map[string]xpValue
 	ns      map[string]string // prefix -> URI (registered via NamespaceContext)
 	docid   map[*Node]int     // document-order index cache
+
+	// funcHook, when set, resolves function calls the built-in library does not
+	// implement (the XSLT extension seam; see xpath_ext.go). curOverride, when
+	// non-nil, is the node current() reports instead of ctx.current.
+	funcHook    func(name string, args []xpValue) (xpValue, bool)
+	curOverride *Node
 }
 
 // evalError is a runtime XPath error.
@@ -61,6 +67,28 @@ func evalXPath(expr string, ctxNode *Node, vars map[string]xpValue, ns map[strin
 		}
 	}()
 	ctx := &evalContext{node: ctxNode, current: ctxNode, root: ctxNode, pos: 1, size: 1, vars: vars, ns: ns, docid: map[*Node]int{}}
+	ctx.indexDoc(ctxNode)
+	return eval(ast, ctx), nil
+}
+
+// evalXPathExt is evalXPath with the two extra seams the XSLT processor drives
+// (see xpath_ext.go): an extension-function resolver consulted before the
+// "unknown function" error, and an override for the current() node.
+func evalXPathExt(expr string, ctxNode *Node, vars map[string]xpValue, ns map[string]string, hook func(string, []xpValue) (xpValue, bool), current *Node) (v xpValue, err error) {
+	ast, err := parseXPath(expr)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if e := recoverEvalError(recover()); e != nil {
+			v, err = nil, e
+		}
+	}()
+	cur := ctxNode
+	if current != nil {
+		cur = current
+	}
+	ctx := &evalContext{node: ctxNode, current: cur, root: ctxNode, pos: 1, size: 1, vars: vars, ns: ns, docid: map[*Node]int{}, funcHook: hook, curOverride: current}
 	ctx.indexDoc(ctxNode)
 	return eval(ast, ctx), nil
 }

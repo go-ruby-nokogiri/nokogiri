@@ -179,9 +179,12 @@ func (p *xpathParser) parsePath() expr {
 			prim = &pathExpr{filter: prim, steps: []step{{axis: axSelf, test: ntNode, predicates: preds}}}
 		}
 		if p.isOp("/") || p.isOp("//") {
-			pe := p.parseLocationPath(false)
-			lp := pe.(*pathExpr)
-			lp.filter = prim
+			// FilterExpr followed by a relative location path, e.g.
+			// current()/@id or key('k', x)/child. The separator belongs to the
+			// relative path; parseRelativeSteps consumes it (and, for "//", the
+			// implicit descendant-or-self step) and appends the following steps.
+			lp := &pathExpr{filter: prim}
+			p.parseRelativeSteps(lp)
 			return lp
 		}
 		return prim
@@ -207,6 +210,15 @@ func (p *xpathParser) parseLocationPath(absolute bool) expr {
 	} else {
 		lp.steps = append(lp.steps, p.parseStep())
 	}
+	p.parseRelativeSteps(lp)
+	return lp
+}
+
+// parseRelativeSteps appends the trailing "/step" and "//step" segments to lp.
+// It is shared by parseLocationPath (after its first step) and by the FilterExpr
+// "/" RelativeLocationPath case, where lp begins with only a filter and the very
+// first separator still has to be consumed here.
+func (p *xpathParser) parseRelativeSteps(lp *pathExpr) {
 	for {
 		if p.isOp("//") {
 			p.pos++
@@ -219,7 +231,6 @@ func (p *xpathParser) parseLocationPath(absolute bool) expr {
 			break
 		}
 	}
-	return lp
 }
 
 // startsStep reports whether the current token can begin a step.

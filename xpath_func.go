@@ -20,8 +20,14 @@ func callFunc(fc *funcCall, ctx *evalContext) xpValue {
 		return float64(ctx.pos)
 	case "current":
 		// current() is always bound (to the eval root, then to the filtered node
-		// inside a predicate), so it yields a single-node set.
-		return &nodeList{nodes: []*Node{ctx.current}}
+		// inside a predicate), so it yields a single-node set. Under XSLT the
+		// current node is fixed for the whole expression (xpath_ext.go), so an
+		// override wins over the predicate-local context.
+		cur := ctx.current
+		if ctx.curOverride != nil {
+			cur = ctx.curOverride
+		}
+		return &nodeList{nodes: []*Node{cur}}
 	case "count":
 		return float64(len(toNodeList(eval(arg(args, 0, fc), ctx)).nodes))
 	case "id":
@@ -131,6 +137,17 @@ func callFunc(fc *funcCall, ctx *evalContext) xpValue {
 			return f
 		}
 		return math.Floor(f + 0.5)
+	}
+	// Extension-function seam: XSLT (and other embedders) register a resolver via
+	// XPathContext.ResolveFunc for functions outside the core XPath 1.0 library.
+	if ctx.funcHook != nil {
+		evArgs := make([]xpValue, len(args))
+		for i, a := range args {
+			evArgs[i] = eval(a, ctx)
+		}
+		if res, ok := ctx.funcHook(fc.name, evArgs); ok {
+			return res
+		}
 	}
 	panic(evalError("xpath: unknown function " + fc.name + "()"))
 }

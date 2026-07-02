@@ -261,7 +261,7 @@ func (ctx *evalContext) applyPredicates(s step, nodes []*Node) []*Node {
 			if ctx.current == ctx.root {
 				cur = n
 			}
-			sub := &evalContext{node: n, current: cur, root: ctx.root, pos: i + 1, size: size, vars: ctx.vars, ns: ctx.ns, docid: ctx.docid}
+			sub := &evalContext{node: n, current: cur, root: ctx.root, pos: i + 1, size: size, vars: ctx.vars, ns: ctx.ns, docid: ctx.docid, funcHook: ctx.funcHook, curOverride: ctx.curOverride}
 			v := eval(pred, sub)
 			if num, ok := v.(float64); ok {
 				if int(num) == i+1 {

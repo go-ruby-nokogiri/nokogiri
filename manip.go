@@ -162,3 +162,19 @@ func (d *Document) NewCDATA(s string) *Node {
 func (d *Document) NewComment(s string) *Node {
 	return &Node{Type: CommentNode, content: s, doc: d}
 }
+
+// NewPI creates a detached processing-instruction node with target name and the
+// given data (Nokogiri::XML::ProcessingInstruction.new). XSLT builds these for
+// xsl:processing-instruction.
+func (d *Document) NewPI(name, data string) *Node {
+	return &Node{Type: ProcessingInstructionNode, Name: name, content: data, doc: d}
+}
+
+// NewDocument creates an empty XML Document to hold a freshly built tree, such as
+// an XSLT result tree. Its root is a DocumentNode; append the result with AddChild.
+func NewDocument() *Document {
+	d := &Document{html: false}
+	d.Type = DocumentNode
+	d.doc = d
+	return d
+}
