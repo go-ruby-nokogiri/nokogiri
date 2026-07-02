@@ -138,6 +138,30 @@ func TestEvalXPathCtxCurrentOverride(t *testing.T) {
 	}
 }
 
+// TestEvalXPathCtxPositionSize seeds the context position()/last().
+func TestEvalXPathCtxPositionSize(t *testing.T) {
+	doc, err := XML(`<r/>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := doc.Node.EvalXPathCtx("position()", nil, &XPathContext{Position: 3, Size: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != float64(3) {
+		t.Fatalf("position() = %v, want 3", got)
+	}
+	got, _ = doc.Node.EvalXPathCtx("last()", nil, &XPathContext{Position: 3, Size: 5})
+	if got != float64(5) {
+		t.Fatalf("last() = %v, want 5", got)
+	}
+	// Zero position/size fall back to the 1/1 defaults.
+	got, _ = doc.Node.EvalXPathCtx("last()", nil, &XPathContext{})
+	if got != float64(1) {
+		t.Fatalf("default last() = %v, want 1", got)
+	}
+}
+
 // TestEvalXPathCtxParseError propagates a parse error.
 func TestEvalXPathCtxParseError(t *testing.T) {
 	doc, _ := XML(`<r/>`)

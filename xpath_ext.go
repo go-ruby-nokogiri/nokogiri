@@ -39,6 +39,13 @@ type XPathContext struct {
 	// Current overrides the node returned by current(). When nil, current() yields
 	// the context node the expression is evaluated against (the default behaviour).
 	Current *Node
+
+	// Position and Size seed the context position()/last() of the outermost
+	// expression. XSLT sets them to the processing position and size of the node
+	// being handled (e.g. inside xsl:for-each). When Position is 0 the defaults
+	// (1 and 1) are used, matching a bare EvalXPath.
+	Position int
+	Size     int
 }
 
 // NewNodeSet builds a *NodeSet from a slice of nodes. XSLT uses it to hand
@@ -90,6 +97,15 @@ func (n *Node) EvalXPathCtx(expr string, nsMap map[string]string, ctx *XPathCont
 	var vars map[string]xpValue
 	var hook func(string, []xpValue) (xpValue, bool)
 	var current *Node
+	pos, size := 1, 1
+	if ctx != nil {
+		if ctx.Position > 0 {
+			pos = ctx.Position
+		}
+		if ctx.Size > 0 {
+			size = ctx.Size
+		}
+	}
 	if ctx != nil {
 		if len(ctx.Vars) > 0 {
 			vars = make(map[string]xpValue, len(ctx.Vars))
@@ -113,7 +129,7 @@ func (n *Node) EvalXPathCtx(expr string, nsMap map[string]string, ctx *XPathCont
 		}
 		current = ctx.Current
 	}
-	v, err := evalXPathExt(expr, n, vars, nsMap, hook, current)
+	v, err := evalXPathExt(expr, n, vars, nsMap, hook, current, pos, size)
 	if err != nil {
 		return nil, err
 	}

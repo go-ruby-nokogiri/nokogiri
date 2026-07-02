@@ -74,7 +74,7 @@ func evalXPath(expr string, ctxNode *Node, vars map[string]xpValue, ns map[strin
 // evalXPathExt is evalXPath with the two extra seams the XSLT processor drives
 // (see xpath_ext.go): an extension-function resolver consulted before the
 // "unknown function" error, and an override for the current() node.
-func evalXPathExt(expr string, ctxNode *Node, vars map[string]xpValue, ns map[string]string, hook func(string, []xpValue) (xpValue, bool), current *Node) (v xpValue, err error) {
+func evalXPathExt(expr string, ctxNode *Node, vars map[string]xpValue, ns map[string]string, hook func(string, []xpValue) (xpValue, bool), current *Node, pos, size int) (v xpValue, err error) {
 	ast, err := parseXPath(expr)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func evalXPathExt(expr string, ctxNode *Node, vars map[string]xpValue, ns map[st
 	if current != nil {
 		cur = current
 	}
-	ctx := &evalContext{node: ctxNode, current: cur, root: ctxNode, pos: 1, size: 1, vars: vars, ns: ns, docid: map[*Node]int{}, funcHook: hook, curOverride: current}
+	ctx := &evalContext{node: ctxNode, current: cur, root: ctxNode, pos: pos, size: size, vars: vars, ns: ns, docid: map[*Node]int{}, funcHook: hook, curOverride: current}
 	ctx.indexDoc(ctxNode)
 	return eval(ast, ctx), nil
 }
