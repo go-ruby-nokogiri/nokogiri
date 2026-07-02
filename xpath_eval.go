@@ -36,6 +36,19 @@ type evalError string
 
 func (e evalError) Error() string { return string(e) }
 
+// recoverEvalError classifies a recovered panic value: an evalError becomes the
+// returned error, and any other value is re-raised (a genuine bug, not an XPath
+// diagnostic). It returns nil when there was no panic.
+func recoverEvalError(r any) error {
+	if r == nil {
+		return nil
+	}
+	if ee, ok := r.(evalError); ok {
+		return ee
+	}
+	panic(r)
+}
+
 // evalXPath compiles and evaluates expr against ctxNode, returning the raw value.
 func evalXPath(expr string, ctxNode *Node, vars map[string]xpValue, ns map[string]string) (v xpValue, err error) {
 	ast, err := parseXPath(expr)
@@ -43,12 +56,8 @@ func evalXPath(expr string, ctxNode *Node, vars map[string]xpValue, ns map[strin
 		return nil, err
 	}
 	defer func() {
-		if r := recover(); r != nil {
-			if ee, ok := r.(evalError); ok {
-				v, err = nil, error(ee)
-				return
-			}
-			panic(r)
+		if e := recoverEvalError(recover()); e != nil {
+			v, err = nil, e
 		}
 	}()
 	ctx := &evalContext{node: ctxNode, current: ctxNode, root: ctxNode, pos: 1, size: 1, vars: vars, ns: ns, docid: map[*Node]int{}}

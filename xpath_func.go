@@ -19,10 +19,9 @@ func callFunc(fc *funcCall, ctx *evalContext) xpValue {
 	case "position":
 		return float64(ctx.pos)
 	case "current":
-		if ctx.current != nil {
-			return &nodeList{nodes: []*Node{ctx.current}}
-		}
-		return &nodeList{}
+		// current() is always bound (to the eval root, then to the filtered node
+		// inside a predicate), so it yields a single-node set.
+		return &nodeList{nodes: []*Node{ctx.current}}
 	case "count":
 		return float64(len(toNodeList(eval(arg(args, 0, fc), ctx)).nodes))
 	case "id":
@@ -182,9 +181,7 @@ func fnSubstring(args []expr, ctx *evalContext, fc *funcCall) xpValue {
 	if hi > len(s)+1 {
 		hi = len(s) + 1
 	}
-	if lo < 1 {
-		lo = 1
-	}
+	// lo is already clamped to at least 1 by the math.Max above.
 	if hi <= lo {
 		return ""
 	}

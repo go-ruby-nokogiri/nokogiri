@@ -5,6 +5,7 @@
 package nokogiri
 
 import (
+	"io"
 	"strings"
 
 	xhtml "golang.org/x/net/html"
@@ -16,8 +17,11 @@ import (
 // Nokogiri::HTML / Nokogiri::HTML5. Malformed "tag soup" is recovered exactly as
 // a browser would: missing end tags are inferred, misnested tags are corrected,
 // and implied <html>/<head>/<body> wrappers are added.
-func HTML(s string) (*Document, error) {
-	root, err := xhtml.Parse(strings.NewReader(s))
+func HTML(s string) (*Document, error) { return HTMLReader(strings.NewReader(s)) }
+
+// HTMLReader is HTML reading from an io.Reader (Nokogiri accepts an IO too).
+func HTMLReader(r io.Reader) (*Document, error) {
+	root, err := xhtml.Parse(r)
 	if err != nil {
 		return nil, err
 	}
@@ -25,9 +29,7 @@ func HTML(s string) (*Document, error) {
 	doc.Type = DocumentNode
 	doc.doc = doc
 	for c := root.FirstChild; c != nil; c = c.NextSibling {
-		if n := convertHTML(c, doc); n != nil {
-			doc.appendConverted(n)
-		}
+		doc.appendConverted(convertHTML(c, doc))
 	}
 	return doc, nil
 }
@@ -36,8 +38,13 @@ func HTML(s string) (*Document, error) {
 // matching Nokogiri::HTML::DocumentFragment.parse. The returned Document's
 // children are the fragment's top-level nodes.
 func HTMLFragment(s string) (*Document, error) {
+	return HTMLFragmentReader(strings.NewReader(s))
+}
+
+// HTMLFragmentReader is HTMLFragment reading from an io.Reader.
+func HTMLFragmentReader(r io.Reader) (*Document, error) {
 	body := &xhtml.Node{Type: xhtml.ElementNode, Data: "body", DataAtom: atom.Body}
-	nodes, err := xhtml.ParseFragment(strings.NewReader(s), body)
+	nodes, err := xhtml.ParseFragment(r, body)
 	if err != nil {
 		return nil, err
 	}
@@ -45,9 +52,7 @@ func HTMLFragment(s string) (*Document, error) {
 	doc.Type = DocumentNode
 	doc.doc = doc
 	for _, c := range nodes {
-		if n := convertHTML(c, doc); n != nil {
-			doc.appendConverted(n)
-		}
+		doc.appendConverted(convertHTML(c, doc))
 	}
 	return doc, nil
 }
@@ -81,17 +86,13 @@ func convertHTML(h *xhtml.Node, doc *Document) *Node {
 		return &Node{Type: TextNode, content: h.Data, doc: doc}
 	case xhtml.CommentNode:
 		return &Node{Type: CommentNode, content: h.Data, doc: doc}
-	case xhtml.DoctypeNode:
-		return &Node{Type: DoctypeNode, Name: h.Data, doc: doc}
 	default:
-		return nil
+		// The tree-building parser only ever yields Element/Text/Comment/Doctype
+		// nodes; a doctype is the remaining leaf kind.
+		return &Node{Type: DoctypeNode, Name: h.Data, doc: doc}
 	}
 	for c := h.FirstChild; c != nil; c = c.NextSibling {
-		child := convertHTML(c, doc)
-		if child == nil {
-			continue
-		}
-		n.appendChildRaw(child)
+		n.appendChildRaw(convertHTML(c, doc))
 	}
 	return n
 }

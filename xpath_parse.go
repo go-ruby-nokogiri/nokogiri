@@ -25,12 +25,8 @@ func parseXPath(expr string) (e expr, err error) {
 	}
 	p := &xpathParser{toks: toks}
 	defer func() {
-		if r := recover(); r != nil {
-			if pe, ok := r.(parseError); ok {
-				e, err = nil, error(pe)
-				return
-			}
-			panic(r)
+		if pe := recoverParseError(recover()); pe != nil {
+			e, err = nil, pe
 		}
 	}()
 	e = p.parseExpr()
@@ -43,6 +39,18 @@ func parseXPath(expr string) (e expr, err error) {
 type parseError string
 
 func (e parseError) Error() string { return string(e) }
+
+// recoverParseError classifies a recovered panic: a parseError becomes the error
+// result; anything else is re-raised. Returns nil when there was no panic.
+func recoverParseError(r any) error {
+	if r == nil {
+		return nil
+	}
+	if pe, ok := r.(parseError); ok {
+		return pe
+	}
+	panic(r)
+}
 
 func (p *xpathParser) fail(format string, a ...any) {
 	panic(parseError("xpath: " + fmt.Sprintf(format, a...)))
@@ -319,16 +327,15 @@ func (p *xpathParser) parsePrimary() expr {
 		return &varRef{t.val}
 	case tFunc:
 		return p.parseFuncCall()
-	case tOp:
-		if t.val == "(" {
-			p.pos++
-			e := p.parseExpr()
-			p.eatOp(")")
-			return e
-		}
+	default:
+		// parsePrimary is only entered by parsePath once it has confirmed the
+		// current token begins a primary expression, so the only remaining kind
+		// here is a "(" grouping.
+		p.eatOp("(")
+		e := p.parseExpr()
+		p.eatOp(")")
+		return e
 	}
-	p.fail("unexpected token %q", t.val)
-	return nil
 }
 
 func (p *xpathParser) parseFuncCall() expr {
