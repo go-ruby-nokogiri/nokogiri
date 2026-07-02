@@ -139,6 +139,14 @@ func (l *xpathLexer) lexName() {
 		break
 	}
 	name := l.src[start:l.pos]
+
+	// An operator keyword (and/or/div/mod) takes priority when an operator is
+	// expected here — otherwise "and (" would be misread as a function call.
+	if l.opExpected() && (name == "and" || name == "or" || name == "div" || name == "mod") {
+		l.toks = append(l.toks, token{tOp, name})
+		return
+	}
+
 	// Look ahead past spaces for "::" (axis) or "(" (function).
 	save := l.pos
 	l.skipSpace()
@@ -157,11 +165,6 @@ func (l *xpathLexer) lexName() {
 		return
 	default:
 		l.pos = save
-	}
-	// Operator keyword when an operator is expected.
-	if l.opExpected() && (name == "and" || name == "or" || name == "div" || name == "mod") {
-		l.toks = append(l.toks, token{tOp, name})
-		return
 	}
 	l.toks = append(l.toks, token{tName, name})
 }

@@ -172,6 +172,12 @@ func compilePseudo(p string) (string, error) {
 		return nthExpr("preceding-sibling::*[name()=name(current())]", arg)
 	case "nth-last-child":
 		return nthExpr("following-sibling::*", arg)
+	case "first-of-type":
+		return "count(preceding-sibling::*[name()=name(current())])=0", nil
+	case "last-of-type":
+		return "count(following-sibling::*[name()=name(current())])=0", nil
+	case "only-of-type":
+		return "count(preceding-sibling::*[name()=name(current())])=0 and count(following-sibling::*[name()=name(current())])=0", nil
 	case "not":
 		inner, err := compileNotArg(arg)
 		if err != nil {

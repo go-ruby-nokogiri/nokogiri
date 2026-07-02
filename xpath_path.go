@@ -252,7 +252,10 @@ func (ctx *evalContext) applyPredicates(s step, nodes []*Node) []*Node {
 		var kept []*Node
 		size := len(nodes)
 		for i, n := range nodes {
-			sub := &evalContext{node: n, current: ctx.current, pos: i + 1, size: size, vars: ctx.vars, ns: ctx.ns, docid: ctx.docid}
+			// Within a predicate, current() resolves to the node being filtered.
+			// This lets the CSS-to-XPath compiler express :first-of-type et al. via
+			// name()=name(current()) against the candidate element.
+			sub := &evalContext{node: n, current: n, pos: i + 1, size: size, vars: ctx.vars, ns: ctx.ns, docid: ctx.docid}
 			v := eval(pred, sub)
 			if num, ok := v.(float64); ok {
 				if int(num) == i+1 {

@@ -151,8 +151,13 @@ func (p *xpathParser) parsePath() expr {
 	if p.isOp("/") || p.isOp("//") {
 		return p.parseLocationPath(true)
 	}
-	// A primary expression that is not a name/axis/@ begins a FilterExpr.
+	// A primary expression that is not a name/axis/@ begins a FilterExpr. A
+	// node-type keyword (node/text/comment/processing-instruction) lexes as a
+	// function but is really a node test, so it starts a location path instead.
 	t := p.cur()
+	if t.kind == tFunc && isNodeTypeName(t.val) {
+		return p.parseLocationPath(false)
+	}
 	if t.kind == tLiteral || t.kind == tNumber || t.kind == tVar || t.kind == tFunc || p.isOp("(") {
 		prim := p.parsePrimary()
 		// Predicates directly on the primary.
@@ -340,6 +345,16 @@ func (p *xpathParser) parseFuncCall() expr {
 	}
 	p.eatOp(")")
 	return fc
+}
+
+// isNodeTypeName reports whether name is one of the XPath node-type test
+// keywords, which lex like functions but are node tests.
+func isNodeTypeName(name string) bool {
+	switch name {
+	case "node", "text", "comment", "processing-instruction":
+		return true
+	}
+	return false
 }
 
 func axisByName(name string, p *xpathParser) axis {
