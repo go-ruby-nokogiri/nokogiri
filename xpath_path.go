@@ -88,10 +88,11 @@ func (ctx *evalContext) axisNodes(s step, n *Node) []*Node {
 		return precedingNodes(n)
 	case axAttribute:
 		return attrNodes(n)
-	case axNamespace:
+	default:
+		// The only remaining axis is the namespace axis; we do not model
+		// namespace nodes, so it yields nothing.
 		return nil
 	}
-	return nil
 }
 
 func childrenOf(n *Node) []*Node {
@@ -188,7 +189,7 @@ func precedingNodes(n *Node) []*Node {
 		} else if x == root {
 			// don't include the document node
 		}
-		for c := x.firstChild; c != nil && !stop; c = c.next {
+		for c := x.firstChild; c != nil; c = c.next {
 			walk(c)
 		}
 	}
@@ -215,18 +216,17 @@ func (ctx *evalContext) nodeTestMatch(s step, n *Node) bool {
 			return n.Type == AttributeNode
 		}
 		return n.Type == ElementNode
-	case ntName:
+	default:
+		// The only remaining test kind is a name test.
 		return ctx.nameTest(s, n)
 	}
-	return false
 }
 
 func (ctx *evalContext) nameTest(s step, n *Node) bool {
-	if s.axis == axAttribute {
-		if n.Type != AttributeNode {
-			return false
-		}
-	} else if n.Type != ElementNode {
+	// A name test matches only elements, except on the attribute axis where the
+	// candidates are attribute nodes. The candidate set for each axis already has
+	// the right node kind, so we just reject the non-element kinds here.
+	if s.axis != axAttribute && n.Type != ElementNode {
 		return false
 	}
 	if n.Name != s.name {
