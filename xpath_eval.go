@@ -353,10 +353,10 @@ func relCmp(op string, a, b float64) bool {
 		return a > b
 	case "<=":
 		return a <= b
-	case ">=":
+	default:
+		// The only remaining relational operator is ">=".
 		return a >= b
 	}
-	return false
 }
 
 func isBool(v xpValue) bool { _, ok := v.(bool); return ok }
