@@ -42,9 +42,12 @@ Four layers, deliberately kept independent:
    tests, predicates, and the core function library) and a CSS-selector→XPath
    translator, both operating on the shared tree.
 
-## Features (v1 — the 90% scraping/parsing surface)
+## Features
 
-- **Parse:** `Nokogiri::HTML` / `Nokogiri::XML` / HTML fragments → `Document`.
+- **Parse:** `Nokogiri::HTML` / `Nokogiri::HTML5` / `Nokogiri::XML` / HTML
+  fragments → `Document`. XML declarations are recognised (version/encoding
+  preserved for round-tripping; ASCII-compatible non-UTF-8 declarations parse
+  structurally — see the deferred note on charset transcoding).
 - **Navigate:** `children` / `element_children` / `parent` / `next` / `previous`
   / `next_element` / `previous_element` / `root`.
 - **Query:** `css` / `at_css` / `xpath` / `at_xpath` on `Node`, `Document`, and
@@ -65,35 +68,60 @@ Four layers, deliberately kept independent:
   true false lang number sum floor ceiling round`, plus `current()`); the full
   operator set (`or and = != < <= > >= + - * div mod |`).
 - **Text & serialization:** `text` / `content` / `inner_html` / `inner_xml` /
-  `to_html` / `to_xml` / `to_s` with correct entity escaping and HTML void-element
-  rules; `[]` / `attribute` / `set_attribute` / `remove_attribute` / `name` /
-  node-type predicates; basic namespaces.
+  `to_html` / `to_xml` / `to_s`. `to_xml` reproduces **libxml2's exact
+  pretty-printing** — the two-space indent, the XML declaration + trailing
+  newline at the document level, and the *sticky-downward* rule that leaves a
+  subtree inline once any level holds character data — all pinned byte-for-byte
+  against the gem. `to_html` follows **WHATWG/HTML5 serialization** (void
+  elements without `/`, raw-text `script`/`style` left unescaped, empty
+  non-void elements as `<x></x>`, no added whitespace). Correct entity escaping;
+  `[]` / `attribute` / `set_attribute` / `remove_attribute` / `name` /
+  node-type predicates.
+- **Namespaces:** `namespaces` (full in-scope map, nearest-wins),
+  `namespace` (the node's own prefix/URI), and `add_namespace_definition`
+  (`AddNamespace`) with live re-resolution of the affected subtree.
+- **Streaming SAX:** `Nokogiri::XML::SAX::Parser` / `SAX::Document` — a
+  `SAXHandler` interface (embed `SAXDocument` for no-op defaults) driven over
+  `Parse`/`ParseReader`, firing `start_document` / `end_document` /
+  `start_element` (attributes including `xmlns` in source order) / `end_element` /
+  `characters` / `comment` / `cdata_block` / `processing_instruction` / `error`,
+  with the event stream pinned against the gem's SAX parser.
 - **Build & mutate:** `Nokogiri::XML::Builder`-style programmatic construction;
   `add_child` / `prepend` / `add_next_sibling` / `add_previous_sibling` /
-  `remove` / `replace` / `content=`.
+  `remove` / `replace` / `wrap` / `content=`.
 
 ## What it is — and isn't (deferred, documented honestly)
 
-The following are **not** implemented in v1 and are called out so nothing is a
-silent gap. They are the parts of Nokogiri that go well beyond parse + query +
-serialize, or that depend on libxslt/libxml2 subsystems:
+The following are **not** implemented and are called out so nothing is a silent
+gap. They are the parts of Nokogiri that go well beyond parse + query + serialize
++ stream, or that depend on libxslt/libxml2 subsystems:
 
 - **XSLT** (`Nokogiri::XSLT`) — not built in here; a pure-Go XSLT 1.0 processor
   lives in the sibling module
   [go-ruby-xslt/xslt](https://github.com/go-ruby-xslt/xslt), which drives this
   library's XPath engine through the `XPathContext` extension seam
   (`Node.EvalXPathCtx`).
-- **Schema validation** — no DTD / RelaxNG / XSD validation.
-- **Streaming** — no SAX (`Nokogiri::XML::SAX`) or pull `Reader` API; parsing is
-  DOM-only.
-- **HTML5 serialization edge cases** — serialization follows the common HTML/XML
-  rules (void elements, entity escaping) but does not reproduce every WHATWG
-  serialization corner.
-- **Namespaces** are handled at the "basic" level (prefix↔URI resolution for
-  queries and round-tripping); the full namespace-node axis is not modelled.
+- **Schema validation** — no DTD / RelaxNG / XSD (`Nokogiri::XML::Schema`,
+  `RelaxNG`) validation. These are large, self-contained validators that in the
+  reference implementation *are* libxml2's schema engines; reproducing them in
+  pure Go is out of scope for this module and is named, not half-shipped.
+- **Pull `Reader`** — `Nokogiri::XML::Reader` (cursor-style pull parsing) is not
+  provided; use the event-driven `SAX::Parser` (implemented) or the DOM.
+- **HTML SAX** — `Nokogiri::HTML4::SAX::Parser` is not provided; SAX streaming is
+  XML-only. (HTML is still fully supported via the DOM parser.)
+- **Exact libxml2 error recovery / diagnostics** — malformed input is reported
+  through the `error` callback / a returned error, but the *text* of libxml2's
+  messages (e.g. "Opening and ending tag mismatch: … line N") and its precise
+  fault-tolerant recovery of broken XML are genuinely libxml2 behaviour and are
+  not reproduced.
+- **Charset transcoding** — a non-UTF-8 XML declaration is honoured for
+  round-tripping (the encoding is preserved on `to_xml`) and ASCII-compatible
+  encodings parse structurally, but the byte stream is **not transcoded** to
+  UTF-8 the way libxml2 does; genuinely non-ASCII-compatible encodings are not
+  supported.
 
-The focus is squarely **parse → CSS/XPath → navigate → serialize**, which covers
-the overwhelming majority of scraping and document-processing code.
+The focus is squarely **parse → CSS/XPath → navigate → serialize → stream (SAX)**,
+which covers the overwhelming majority of scraping and document-processing code.
 
 ## Install
 
@@ -151,9 +179,10 @@ func main() {
 The suite holds **100.0% statement coverage** with **zero** dependency on a Ruby
 runtime — the deterministic, golden-vector tests alone drive the gate, so the
 Windows and cross-arch (qemu) CI lanes pass without `ruby` installed. A separate
-differential **oracle** compares parse + `css`/`xpath` results and serialized
-output against the real **`nokogiri` gem** on the ubuntu/macos lanes (skipped
-where `ruby` is absent, and version-gated to `RUBY_VERSION >= "4.0"`).
+differential **oracle** compares parse + `css`/`xpath` results, `to_xml`/`to_html`
+serialized bytes, `namespaces`, and the `SAX` event stream against the real
+**`nokogiri` gem** on the ubuntu/macos lanes (skipped where `ruby` is absent, and
+version-gated to `RUBY_VERSION >= "4.0"`).
 
 ```sh
 GOWORK=off go test -race -cover ./...

@@ -68,7 +68,7 @@ func TestSerializeCDATAAndComment(t *testing.T) {
 func TestSerializeNamespaceDecls(t *testing.T) {
 	d, _ := XML(`<r xmlns="urn:d" xmlns:x="urn:x"><x:c/></r>`)
 	out := d.Root().ToXML()
-	if out != `<r xmlns="urn:d" xmlns:x="urn:x"><x:c/></r>` {
+	if out != "<r xmlns=\"urn:d\" xmlns:x=\"urn:x\">\n  <x:c/>\n</r>" {
 		t.Fatalf("ns decls: %q", out)
 	}
 }
@@ -86,7 +86,7 @@ func TestSerializeDoctype(t *testing.T) {
 
 func TestSerializeDocumentNode(t *testing.T) {
 	d, _ := XML(`<r><a/></r>`)
-	if d.Node.ToXML() != `<r><a/></r>` {
+	if d.Node.ToXML() != "<?xml version=\"1.0\"?>\n<r>\n  <a/>\n</r>\n" {
 		t.Fatalf("document serialize: %q", d.Node.ToXML())
 	}
 }

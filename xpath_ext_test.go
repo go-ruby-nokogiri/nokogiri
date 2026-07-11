@@ -182,7 +182,7 @@ func TestNewDocumentAndNodes(t *testing.T) {
 	el.AddChild(pi)
 	d.AddChild(el)
 	got := d.ToXML()
-	want := `<x>hi<?php echo 1;?></x>`
+	want := "<?xml version=\"1.0\"?>\n<x>hi<?php echo 1;?></x>\n"
 	if got != want {
 		t.Fatalf("ToXML = %q, want %q", got, want)
 	}

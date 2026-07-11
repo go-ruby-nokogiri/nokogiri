@@ -81,9 +81,9 @@ type Node struct {
 	// root before insertion). It is set for every node reachable from a Document.
 	doc *Document
 
-	parent               *Node
+	parent                *Node
 	firstChild, lastChild *Node
-	prev, next           *Node
+	prev, next            *Node
 }
 
 // Document is the root of a parsed tree. It embeds a Node (the DocumentNode) and
@@ -92,6 +92,9 @@ type Node struct {
 type Document struct {
 	Node
 	html bool
+	// encoding is the character encoding declared in the source XML declaration
+	// (e.g. "UTF-8"), preserved so #to_xml can reproduce it; empty when none.
+	encoding string
 	// errors accumulates non-fatal parse diagnostics (Nokogiri exposes #errors).
 	errors []string
 }

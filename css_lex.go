@@ -18,8 +18,8 @@ const (
 	cssUniversal
 	cssID
 	cssClass
-	cssAttr    // val holds the body between [ ]
-	cssPseudo  // val holds the pseudo name plus any (arg)
+	cssAttr   // val holds the body between [ ]
+	cssPseudo // val holds the pseudo name plus any (arg)
 	cssCombinator
 )
 

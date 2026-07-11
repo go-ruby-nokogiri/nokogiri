@@ -22,6 +22,12 @@ func XML(s string) (*Document, error) {
 
 	dec := xml.NewDecoder(strings.NewReader(s))
 	dec.Strict = true
+	// encoding/xml refuses a non-UTF-8 encoding declaration unless a CharsetReader
+	// is supplied. We pass the bytes through unchanged so ASCII-compatible
+	// declarations (ISO-8859-1, windows-1252, US-ASCII, …) parse structurally and
+	// the declared encoding is preserved for #to_xml; we do not transcode the
+	// bytes, which is where this differs from libxml2's full charset support.
+	dec.CharsetReader = func(_ string, input io.Reader) (io.Reader, error) { return input, nil }
 	// Keep the raw prefixes rather than have the decoder rewrite them, so we can
 	// reproduce the source and resolve prefixes ourselves for XPath.
 	var stack []*Node
@@ -56,10 +62,21 @@ func XML(s string) (*Document, error) {
 			if isCDATASpan(s, int(startOff), int(dec.InputOffset())) {
 				nt = CDATANode
 			}
+			// libxml2/Nokogiri drop whitespace-only text nodes at the document level
+			// (before/after the root element); keep them everywhere else.
+			if cur == &doc.Node && nt == TextNode && strings.TrimSpace(string(t)) == "" {
+				continue
+			}
 			cur.appendChildRaw(&Node{Type: nt, content: string(t), doc: doc})
 		case xml.Comment:
 			cur.appendChildRaw(&Node{Type: CommentNode, content: string(t), doc: doc})
 		case xml.ProcInst:
+			// The XML declaration is surfaced by encoding/xml as a "xml" proc-inst;
+			// Nokogiri models it as document metadata (version/encoding), not a node.
+			if t.Target == "xml" && cur == &doc.Node {
+				doc.encoding = declEncoding(string(t.Inst))
+				continue
+			}
 			cur.appendChildRaw(&Node{
 				Type: ProcessingInstructionNode, Name: t.Target,
 				content: string(t.Inst), doc: doc,
@@ -139,6 +156,31 @@ func isCDATASpan(src string, lo, hi int) bool {
 		seg = seg[1:]
 	}
 	return strings.HasPrefix(seg, "<![CDATA[")
+}
+
+// declEncoding extracts the encoding pseudo-attribute from an XML declaration's
+// instruction body (e.g. `version="1.0" encoding="UTF-8"` -> "UTF-8"). It returns
+// "" when no encoding is declared.
+func declEncoding(inst string) string {
+	i := strings.Index(inst, "encoding")
+	if i < 0 {
+		return ""
+	}
+	rest := inst[i+len("encoding"):]
+	rest = strings.TrimLeft(rest, " \t\r\n")
+	if len(rest) == 0 || rest[0] != '=' {
+		return ""
+	}
+	rest = strings.TrimLeft(rest[1:], " \t\r\n")
+	if len(rest) == 0 || (rest[0] != '"' && rest[0] != '\'') {
+		return ""
+	}
+	q := rest[0]
+	rest = rest[1:]
+	if j := strings.IndexByte(rest, q); j >= 0 {
+		return rest[:j]
+	}
+	return ""
 }
 
 // directiveName extracts the leading token of an XML directive, e.g. "DOCTYPE".

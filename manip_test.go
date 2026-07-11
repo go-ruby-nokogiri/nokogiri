@@ -13,18 +13,18 @@ func TestAddChildAndPrepend(t *testing.T) {
 	b := d.NewElement("b")
 	root.AddChild(a)
 	root.AddChild(b)
-	if root.ToXML() != `<root><a/><b/></root>` {
+	if root.ToXML() != "<root>\n  <a/>\n  <b/>\n</root>" {
 		t.Fatalf("append: %q", root.ToXML())
 	}
 	c := d.NewElement("c")
 	root.Prepend(c)
-	if root.ToXML() != `<root><c/><a/><b/></root>` {
+	if root.ToXML() != "<root>\n  <c/>\n  <a/>\n  <b/>\n</root>" {
 		t.Fatalf("prepend: %q", root.ToXML())
 	}
 	// prepend into empty
 	empty := d.NewElement("e")
 	empty.Prepend(d.NewElement("f"))
-	if empty.ToXML() != `<e><f/></e>` {
+	if empty.ToXML() != "<e>\n  <f/>\n</e>" {
 		t.Fatalf("prepend empty: %q", empty.ToXML())
 	}
 }
@@ -35,7 +35,7 @@ func TestSiblingInsertion(t *testing.T) {
 	b := root.FirstChild()
 	b.AddPreviousSibling(d.NewElement("a"))
 	b.AddNextSibling(d.NewElement("c"))
-	if root.ToXML() != `<root><a/><b/><c/></root>` {
+	if root.ToXML() != "<root>\n  <a/>\n  <b/>\n  <c/>\n</root>" {
 		t.Fatalf("siblings: %q", root.ToXML())
 	}
 	// insert after last updates lastChild
@@ -57,13 +57,13 @@ func TestRemoveAndReplace(t *testing.T) {
 	root := d.Root()
 	b := root.FirstChild().Next()
 	b.Remove()
-	if root.ToXML() != `<root><a/><c/></root>` {
+	if root.ToXML() != "<root>\n  <a/>\n  <c/>\n</root>" {
 		t.Fatalf("remove middle: %q", root.ToXML())
 	}
 	// replace first
 	a := root.FirstChild()
 	a.Replace(d.NewElement("x"))
-	if root.ToXML() != `<root><x/><c/></root>` {
+	if root.ToXML() != "<root>\n  <x/>\n  <c/>\n</root>" {
 		t.Fatalf("replace first: %q", root.ToXML())
 	}
 	// replace last
@@ -76,7 +76,7 @@ func TestRemoveAndReplace(t *testing.T) {
 	d2, _ := XML(`<r><a/><m/><z/></r>`)
 	m := d2.Root().FirstChild().Next()
 	m.Replace(d2.NewElement("q"))
-	if d2.Root().ToXML() != `<r><a/><q/><z/></r>` {
+	if d2.Root().ToXML() != "<r>\n  <a/>\n  <q/>\n  <z/>\n</r>" {
 		t.Fatalf("replace middle: %q", d2.Root().ToXML())
 	}
 }
@@ -88,7 +88,7 @@ func TestReparenting(t *testing.T) {
 	b := a.Next()
 	child := a.FirstChild()
 	b.AddChild(child) // move child from a to b
-	if root.ToXML() != `<root><a/><b><child/></b></root>` {
+	if root.ToXML() != "<root>\n  <a/>\n  <b>\n    <child/>\n  </b>\n</root>" {
 		t.Fatalf("reparent: %q", root.ToXML())
 	}
 }

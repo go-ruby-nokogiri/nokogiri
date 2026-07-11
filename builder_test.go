@@ -16,7 +16,7 @@ func TestBuilderXML(t *testing.T) {
 			b.CDATA("<raw>")
 		})
 	})
-	want := `<catalog><book id="b1"><title>Alpha</title><!--note--><![CDATA[<raw>]]></book></catalog>`
+	want := "<?xml version=\"1.0\"?>\n<catalog>\n  <book id=\"b1\"><title>Alpha</title><!--note--><![CDATA[<raw>]]></book>\n</catalog>\n"
 	if got := b.ToXML(); got != want {
 		t.Fatalf("builder xml:\n got %q\nwant %q", got, want)
 	}
@@ -49,7 +49,7 @@ func TestBuilderAttrOnNonElement(t *testing.T) {
 	// Attr at document level (current is document node) is a no-op.
 	b.Attr("x", "1")
 	b.Element("r", nil)
-	if b.ToXML() != `<r/>` {
+	if b.ToXML() != "<?xml version=\"1.0\"?>\n<r/>\n" {
 		t.Fatalf("builder attr no-op: %q", b.ToXML())
 	}
 }
