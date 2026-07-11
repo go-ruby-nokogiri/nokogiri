@@ -12,13 +12,13 @@ func TestSiblingInsertMiddle(t *testing.T) {
 	a := root.FirstChild()
 	// insert after 'a', which HAS a next sibling ('b') -> rewires b.prev
 	a.AddNextSibling(d.NewElement("x"))
-	if root.ToXML() != `<r><a/><x/><b/></r>` {
+	if root.ToXML() != "<r>\n  <a/>\n  <x/>\n  <b/>\n</r>" {
 		t.Fatalf("insert middle next: %q", root.ToXML())
 	}
 	// insert before 'b', which HAS a prev sibling -> rewires prev.next
 	b := root.LastChild()
 	b.AddPreviousSibling(d.NewElement("y"))
-	if root.ToXML() != `<r><a/><x/><y/><b/></r>` {
+	if root.ToXML() != "<r>\n  <a/>\n  <x/>\n  <y/>\n  <b/>\n</r>" {
 		t.Fatalf("insert middle prev: %q", root.ToXML())
 	}
 }

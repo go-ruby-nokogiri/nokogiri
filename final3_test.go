@@ -36,7 +36,8 @@ func TestXMLDoctypeSerialization(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := d.Node.ToXML()
-	if want := `<!DOCTYPE greeting SYSTEM "hello.dtd">`; out[:len(want)] != want {
+	want := "<?xml version=\"1.0\"?>\n<!DOCTYPE greeting SYSTEM \"hello.dtd\">\n<greeting/>\n"
+	if out != want {
 		t.Fatalf("xml doctype serialize: %q", out)
 	}
 }

@@ -4,6 +4,8 @@
 
 package nokogiri
 
+import "fmt"
+
 // unlink detaches n from its current parent and sibling links without clearing
 // its own child pointers, so the caller can re-insert it elsewhere.
 func (n *Node) unlink() {
@@ -126,6 +128,37 @@ func (n *Node) Replace(repl *Node) *Node {
 	n.prev = nil
 	n.next = nil
 	return repl
+}
+
+// Wrap parses markup (a single element, using the owning document's parser) and
+// re-parents n inside it, putting the new wrapper where n used to be — the Go
+// analogue of Nokogiri::XML::Node#wrap. It returns the wrapper element.
+func (n *Node) Wrap(markup string) (*Node, error) {
+	var frag *Document
+	var err error
+	if n.doc != nil && n.doc.html {
+		frag, err = HTMLFragment(markup)
+	} else {
+		frag, err = XML(markup)
+	}
+	if err != nil {
+		return nil, err
+	}
+	var w *Node
+	for c := frag.firstChild; c != nil; c = c.next {
+		if c.Type == ElementNode {
+			w = c
+			break
+		}
+	}
+	if w == nil {
+		return nil, fmt.Errorf("nokogiri: wrap markup %q has no element", markup)
+	}
+	w.unlink()
+	w.setDocRecursive(n.doc)
+	n.AddPreviousSibling(w)
+	w.AddChild(n)
+	return w, nil
 }
 
 // SetContent replaces all children of n with a single text node holding s

@@ -19,6 +19,12 @@ import (
 // and implied <html>/<head>/<body> wrappers are added.
 func HTML(s string) (*Document, error) { return HTMLReader(strings.NewReader(s)) }
 
+// HTML5 parses an HTML document with the WHATWG HTML5 algorithm, matching
+// Nokogiri::HTML5. Because golang.org/x/net/html already implements the HTML5
+// tree-building specification, this is the same code path as HTML; the alias
+// exists so ported Ruby that calls Nokogiri::HTML5(...) reads naturally.
+func HTML5(s string) (*Document, error) { return HTML(s) }
+
 // HTMLReader is HTML reading from an io.Reader (Nokogiri accepts an IO too).
 func HTMLReader(r io.Reader) (*Document, error) {
 	root, err := xhtml.Parse(r)

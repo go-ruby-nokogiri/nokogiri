@@ -30,12 +30,12 @@ const (
 type nodeTestKind int
 
 const (
-	ntName nodeTestKind = iota // name test (possibly with prefix / *)
-	ntNode                     // node()
-	ntText                     // text()
-	ntComment                  // comment()
-	ntPI                       // processing-instruction(...)
-	ntAny                      // *
+	ntName    nodeTestKind = iota // name test (possibly with prefix / *)
+	ntNode                        // node()
+	ntText                        // text()
+	ntComment                     // comment()
+	ntPI                          // processing-instruction(...)
+	ntAny                         // *
 )
 
 // expr is any XPath expression node.
