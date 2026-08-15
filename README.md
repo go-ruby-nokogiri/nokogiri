@@ -1,3 +1,11 @@
+> [!WARNING]
+> **DEPRECATED — this repository is a stale duplicate, kept in place (not archived) for reference.**
+>
+> The maintained source of truth is **[github.com/go-nokogiri/nokogiri](https://github.com/go-nokogiri/nokogiri)**.
+> All consumers (rbgo, jekyll, wasmbox) depend on `github.com/go-nokogiri/nokogiri`; do not add new dependencies on this `go-ruby-nokogiri` path.
+
+---
+
 <p align="center"><img src="https://raw.githubusercontent.com/go-ruby-nokogiri/brand/main/social/go-ruby-nokogiri-nokogiri.png" alt="go-ruby-nokogiri/nokogiri" width="720"></p>
 
 # nokogiri — go-ruby-nokogiri
